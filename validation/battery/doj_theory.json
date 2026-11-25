@@ -1,0 +1,34 @@
+{
+ "_doc": "Curated DOJ fraud MECHANISM(s) per gold_set battery true positive, extracted from each case's scheme_summary. This is the ANSWER KEY for theory-match recall \u2014 used ONLY by scripts/theory_match.py for post-hoc scoring (OUTSIDE the sandbox), NEVER fed to the in-sandbox loop. Recall = did the loop INDEPENDENTLY plead a count targeting the same fraud mechanism DOJ charged. Mechanism tags are from theory_match.FRAUD_TYPES. confidence='low' means the gold_set press-release summary is too generic to pin the mechanism (needs the fuller DOJ complaint \u2014 a corpus-enrichment TODO).",
+ "subjects": {
+  "1043299514": {
+   "doj_mechanisms": [
+    "incident_to"
+   ],
+   "confidence": "high",
+   "note": "NP-provided services billed under the physician NPI at the physician rate (incident-to conditions unmet)"
+  },
+  "1427164722": {
+   "doj_mechanisms": [
+    "false_dates"
+   ],
+   "confidence": "high",
+   "note": "multiple procedures performed on a SINGLE date billed as if on MULTIPLE dates (to evade multiple-procedure payment reduction)"
+  },
+  "1679959845": {
+   "doj_mechanisms": [
+    "services_not_rendered",
+    "medically_unnecessary"
+   ],
+   "confidence": "high",
+   "note": "Botox never provided / cosmetic w/o migraine indication; billed on vacation/closed days, incarcerated bene; backdated + fabricated consents"
+  },
+  "1639165277": {
+   "doj_mechanisms": [
+    "kickback"
+   ],
+   "confidence": "high",
+   "note": "accepted consultation fees for ordering DME + topical pain creams for patients with no established provider-patient relationship"
+  }
+ }
+}

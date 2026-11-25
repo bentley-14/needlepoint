@@ -1,0 +1,85 @@
+{
+ "_doc": "Public calibration battery: DOJ-charged true positives only, keyed by NPI (no names; identity is looked up at run time). as_of is the leak-safe cutoff (discovery/charge date, not disposition). Add negative controls with scripts/calibration/select_tier1_controls.py (random mid-percentile peers), never by hand-picking providers.",
+ "subjects": [
+  {
+   "npi": "1043299514",
+   "kind": "true_positive",
+   "as_of": "2020-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-wdky/pr/louisville-physician-agrees-pay-250000-settle-false-claims-act-allegations",
+   "name": "",
+   "subject_hint": "NPI 1043299514 Family Practice KY"
+  },
+  {
+   "npi": "1427164722",
+   "kind": "true_positive",
+   "as_of": "2022-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-ndil/pr/suburban-chicago-doctor-and-his-surgical-center-pay-more-750000-settle-false-claims",
+   "name": "",
+   "subject_hint": "NPI 1427164722 General Surgery IL"
+  },
+  {
+   "npi": "1679959845",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/opa/pr/california-doctor-convicted-45m-botox-fraud-scheme-targeting-medicare",
+   "name": "",
+   "subject_hint": "NPI 1679959845 Family Medicine CA"
+  },
+  {
+   "npi": "1639165277",
+   "kind": "true_positive",
+   "as_of": "2019-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-mdpa/pr/medical-doctor-pay-40800-resolve-civil-liability-alleged-violations-false-claims-act",
+   "name": "",
+   "subject_hint": "NPI 1639165277 Cardiology PA"
+  },
+  {
+   "npi": "1144274895",
+   "kind": "true_positive",
+   "as_of": "2022-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-wdpa/pr/foundersowners-hertel-brown-physical-and-aquatic-therapy-each-sentenced-six-years",
+   "name": "",
+   "subject_hint": "NPI 1144274895 Physical Therapist PA"
+  },
+  {
+   "npi": "1811928674",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-wdwa/pr/indian-national-sentenced-prison-medicare-fraud-scheme-stole-more-1-million-taxpayer",
+   "name": "",
+   "subject_hint": "NPI 1811928674 Family Practice WA"
+  },
+  {
+   "npi": "1720048036",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-ndil/pr/chicago-health-care-company-and-its-owner-pay-1-million-settle-false-claims-act",
+   "name": "",
+   "subject_hint": "NPI 1720048036 General Surgery IL"
+  },
+  {
+   "npi": "1770584690",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-dc/pr/more-dozen-cardiology-practices-will-pay-over-177-million-resolve-false-claims-act",
+   "name": "",
+   "subject_hint": "NPI 1770584690 Cardiology KY"
+  },
+  {
+   "npi": "1770506578",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-edmo/pr/columbia-missouri-doctor-arrested-accused-health-care-fraud-illegally-prescribing",
+   "name": "",
+   "subject_hint": "NPI 1770506578 Internal Medicine MO"
+  },
+  {
+   "npi": "1043300148",
+   "kind": "true_positive",
+   "as_of": "2024-01-01",
+   "doj_source_url": "https://www.justice.gov/usao-sdtx/pr/south-texas-doctors-agree-pay-nearly-5-million-settle-false-claims-act-liability",
+   "name": "",
+   "subject_hint": "NPI 1043300148 Pulmonary Disease TX"
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+[project]
+name = "fraud-investigator-v2"
+version = "0.1.0"
+description = "Python-orchestrated multi-agent fraud-investigation pipeline (Claude Code CLI or any LLM provider via LiteLLM)"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.5",
+  "click>=8.1",
+  "rich>=13.7",
+  "python-dotenv>=1.0",
+  # Python 3.9 needs this to evaluate `X | None` style annotations at runtime
+  "eval_type_backport>=0.2; python_version < '3.10'",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7", "pytest-asyncio>=0.23"]
+api = ["litellm>=1.40"]
+
+[project.scripts]
+fraud-investigator-v2 = "fraud_investigator.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+fraud_investigator = ["prompts/*.md"]

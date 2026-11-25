@@ -1,0 +1,286 @@
+# Data artifacts (never commit raw, panel, registry, processed, or model data)
+data/raw/**
+data/panels/**
+data/registries/**
+data/processed/**
+
+# Fraud-period extraction artifacts: keep merged outputs + bodies (provenance),
+# but skip the per-batch JSON staging files and downloaded PDF cache (binary).
+data/extracted/fraud_period_extraction_v2/batches/
+data/extracted/fraud_period_extraction_v2/shard_*/batches/
+data/extracted/fraud_period_extraction_v2/enhancements/
+data/extracted/fraud_period_extraction_v3_bodies/pdf_cache/
+data/extracted/fraud_period_extraction_v3_bodies/bodies.jsonl.bak_pre_retry
+data/extracted/fraud_period_extraction_v5_pdfs/pdf_cache/
+data/models/**
+data/runtime/**
+# gold_set pre-edit safety snapshots (kept on disk for rollback; never committed)
+data/extracted/gold_set.jsonl.bak_*
+data/extracted/gold_set_backfill.jsonl.bak_*
+# per-operation audit logs under case sources (operational, not corpus content)
+data/source/cases/*/_audit/
+# Superseded v1 Node agent prototype — kept locally for reference; v2 is canonical
+/fraud-investigator/
+!data/raw/.gitkeep
+!data/panels/.gitkeep
+# Allow scrape provenance index (small, critical for idempotent re-runs)
+!data/raw/_index/
+!data/raw/_index/**
+!data/registries/.gitkeep
+!data/processed/.gitkeep
+!data/models/.gitkeep
+!data/runtime/.gitkeep
+
+# LEIE fetch cache (retired from active pipeline) — only the committed
+# leie_candidates.csv snapshot stays tracked.
+data/legacy/leie/*.parquet
+data/legacy/leie/*.csv.part
+!data/legacy/leie/leie_candidates.csv
+!data/legacy/leie/README.md
+
+# Sprint backtest harness outputs (timestamped; regenerated per run)
+data/eval/sprint_backtests
+data/eval/sprint_backtests/**
+!data/eval/sprint_backtests/.gitkeep
+
+# Case-scrape work products — regenerated per run, not committed.
+# Parking holds NPI-less candidates pending later resolution.
+# Scrape state holds resumable cursors per (source, query, year).
+# Scrape logs are timestamped JSON run reports.
+# .repaired / .deduped jsonl are derivative outputs of cases_v0.jsonl.
+data/source/cases/parking/
+data/source/cases/scrape_state/
+data/source/cases/scrape_logs/
+data/source/cases/repair_audit_*.json
+data/source/cases/cases_v0.repaired.jsonl
+data/source/cases/cases_v0.deduped.jsonl
+# v4 raw fetched HTML — large (~210MB) and regenerable via scripts/ingest/v4/fetch.py
+data/source/cases/v4_fulltext/_raw/
+data/source/cases/v4_fulltext/*.json
+!data/source/cases/v4_fulltext/_index.jsonl
+!data/source/cases/v4_fulltext/_failures.jsonl
+
+# Local fetcher cache when running from a worktree (download.py's
+# PROJECT_ROOT resolves under fraudlib/ instead of repo root, so
+# downloads land here rather than data/raw/). The symlink (no trailing
+# slash) is also covered.
+fraudlib/data/
+fraudlib/data
+
+# Experiment-time caches and outputs (regenerable; large)
+data/cache/
+data/cache/**
+results/
+results/**
+# Exceptions: curated / canonical results (force-added)
+!results/rule_candidates_v3/
+!results/rule_candidates_v3/**
+!results/walk_forward/
+!results/walk_forward/recall_summary.json
+
+# Per-run logs from experiment harnesses
+results_log.txt
+*_log.txt
+
+# Local planning artifacts
+plans/
+
+# Source PDFs (personal / not for redistribution)
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Local env vars
+.env
+.env.local
+
+# Node / JS dependencies (e.g. fraud-investigator/ agent prototype)
+node_modules/
+
+# Claude settings / session state (local only)
+.claude/
+
+# Orchestrator scratchpad (recreated per run) — covered by data/runtime/** above
+# but kept here explicitly so the glob pattern is obvious.
+data/runtime/scratchpad.sqlite*
+
+# Medicaid Provider Spending (HHS T-MSIS) — large data files, not committed
+data/raw/medicaid/*.parquet
+data/raw/medicaid/*.duckdb
+
+
+# California CHHS Open Data raw CSVs (re-downloadable)
+data/raw/ca/*.csv
+
+# Orchestrator + agent launcher logs (per-run, regenerated)
+state/runs/*.log
+state/runs/_launcher*.log
+state/runs/_agent_launcher_*.log
+
+# Per-run orchestration state (events.jsonl + parsed.json blobs)
+# Volatile; reproducible by re-running the orchestrator with the same
+# queue entry. Kept on disk for in-flight debugging only.
+state/runs/run_*/
+state/runs/agent_*/
+
+# Wait-and-relaunch wrapper logs (cold-eyes rerun helper)
+logs/wait_then_relaunch_*.log
+logs/juniper_opus_rerun_*.log
+logs/juniper_sonnet_rerun_*.log
+
+# Firm visualization runtime state (rewritten every page render)
+web/static/firm_state.json
+
+# data/processed symlink (points to repo-root duplicate; bare symlink
+# slips through the data/processed/** rule above)
+data/processed
+
+
+# Session-transient outputs (added 2026-05-22)
+_quarantine_*/
+logs/juniper_*.log
+logs/wait_then_relaunch_juniper_*.log
+state/audit/
+
+output/
+
+# R2-pulled team-contract files — pulled via `make pull-data`,
+# canonical copies live in r2:needlepoint-data/ground_truth/v1/. Never commit.
+data/source/gold_set.jsonl
+data/source/eval_split.json
+
+# Baseline runs — data/cache subtrees are huge (~7 GB each via APFS clones)
+# and per-run scored panels are ~270MB each.
+baselines/*/data/
+baselines/*/_run/
+baselines/*/result/**/scored_full_*.parquet
+baselines/*/result/**/top2000_*.csv
+baselines/*/result/**/training_full.log
+baselines/*/result/**/training.log
+# Frame cache (post-filter parquets, ~2GB each, regenerated per ablation)
+baselines/*/_frame_cache_train/
+baselines/*/_frame_cache/
+baselines/*/ablations/*/_frame_cache_train/
+baselines/*/ablations/*/_frame_cache/
+baselines/*/result/_frame_cache/
+baselines/*/ablations/*/result/_frame_cache/
+# Ablation subfolders — exclude their large compute artifacts
+baselines/*/ablations/*/_run/
+baselines/*/ablations/*/result/**/scored_full_*.parquet
+baselines/*/ablations/*/result/**/top2000_*.csv
+baselines/*/ablations/*/result/**/training_full.log
+baselines/*/ablations/*/result/**/training.log
+# Joblib XGB model pickles (~50-200MB each, regenerated)
+baselines/*/result/**/*.joblib
+baselines/*/ablations/*/result/**/*.joblib
+# Multi-seed result dirs (large, regenerable)
+baselines/*/ablations/*/result/multi_seed_logs/seed_*.log
+
+# Generated calibration workspaces / clean exports. The canonical location is now
+# out-of-repo (~/.calibration_workspaces, built by build_calibration_workspace.py
+# --with-panels); nothing in-repo is tracked. Fully regenerable, so ignore all.
+/calibration_workspaces/*
+
+# Per-run DOJ discovery worklist (regenerable; flows to R2 via push-data, not git)
+data/source/doj_api/curator_input.jsonl
+data/source/doj_api/curator_input.manifest.json
+
+# ── 2026-06-01: generated reports + session scratch (keep the tree clean) ──
+# R editor history; generated report deliverables (matches *.pdf above)
+*.Rhistory
+*.docx
+# large rebuildable mirrors; the .parquet are committed
+data/ground_truth/*.jsonl
+# triage/rerank run outputs (regenerable)
+state/runs/triage_*/
+state/runs/rerank_*/
+# in-progress dossier (case under active correction)
+investigations/Cedar-2026-06-01/
+# session scratch scripts
+scripts/_triage_top500_*.py
+scripts/_overnight/
+scripts/_build_highrisk_pdf.py
+scripts/experiments/_walk_forward_*.py
+# Synthea synthetic-claim generator: ignore the jar + bundled JDK + all generated
+# output dirs (output/, output_ky/, …) and any derived synth_claims parquet; keep README + run.sh
+tools/synthea/synthea-with-dependencies.jar
+tools/synthea/jdk/
+tools/synthea/output*/
+synth_claims.parquet
+
+# Committed artifacts: a designated, version-tracked home for shareable generated PDFs
+# (re-included despite the broad `*.pdf` ignore above). Run-output PDFs stay ignored.
+!docs/calibration/artifacts/*.pdf
+
+# Run artifacts live in R2 (r2:needlepoint-data/artifacts/), NEVER in Git.
+# Pushed by scripts/sync_artifacts_r2.sh; pulled via setup_r2.sh. Local copies
+# remain on disk — these rules only stop Git from tracking them.
+# (system-design-* is design reference — prompts, sample states — NOT a run
+#  artifact, so it stays in Git.)
+investigations/*
+!investigations/system-design-2026-05-03/
+fraud-investigator-v2/state/calibration/
+fraud-investigator-v2/state/CASE-*/
+
+# Run artifacts + local workspace (R2 is canonical; never commit these — a
+# stray `git add -A` swept 23MB of these into a prompt PR on 2026-06-12)
+state/runs/
+state/model_overrides.json
+*.bak
+*.mp4
+*.tgz
+fraud-investigator-v2/state/CASE-*/
+fraud-investigator-v2/state/calibration/
+
+# --- open-platform release: never commit case state, results, or local config ---
+state/
+fraud-investigator-v2/state/
+investigations/
+results/
+validation/
+logs/
+data/extracted/
+data/source/
+data/ground_truth/
+data/cache/
+.claude/
+.env
+*.log
+
+# Ship the policy-corpus JSON Schema (structure only, no data)
+!data/source/
+!data/source/policy/
+data/source/policy/*
+!data/source/policy/policy_guidelines.schema.json
+
+# Public eval kit (labels + battery; no names)
+!data/extracted/
+data/extracted/*
+!data/extracted/gold_set.jsonl
+!validation/
+validation/*
+!validation/battery/
+validation/battery/*
+!validation/battery/battery.json
+!validation/battery/doj_theory.json
+!validation/battery/baseline.json
+
+# needlepoint.py remembers your last settings here
+.needlepoint.json

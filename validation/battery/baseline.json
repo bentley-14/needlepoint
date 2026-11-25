@@ -1,0 +1,11 @@
+{
+ "generated": "2026-08-16",
+ "n_subjects": 7,
+ "n_no_run": 3,
+ "n_inconclusive": 0,
+ "tp_file_rate": 0.2857,
+ "control_file_rate": 0.0,
+ "evf_separation": null,
+ "control_dispositive_defeat_rate": null,
+ "_note": "Reference system, Aug 2026: Sonnet 5 tool steps + Opus 5 reasoning gates, production profile, leak-safe export mode. 2 of 7 scored true positives filed; all 5 declines were chart-dependent schemes (phantom billing, documentation-level necessity, unretrievable contemporaneous coverage text): the measured ceiling of public data. control_file_rate 0.0 was measured on private controls; regenerate controls with select_tier1_controls.py."
+}

@@ -1,0 +1,72 @@
+# Core pipeline deps — everything in `fraudlib/` (including the
+# `fraudlib.pipeline` agents) and `scripts/experiments/` runs with just
+# these. Paper-reproduction extras live in
+# `requirements-paper-repro.txt`.
+
+pandas>=2
+numpy>=1.24
+pyarrow>=14
+# Columnar (DataFrame-level) schema validation for pipeline producers:
+# coerce dtypes, enforce nullability + value checks at write-time. See
+# pipeline/base.py. Vectorized (not per-row) so it scales to the panels.
+pandera[pandas]>=0.31
+scikit-learn>=1.3
+xgboost>=2
+requests>=2.31
+tqdm>=4.66
+
+# DuckDB powers the Investigator's read-only SQL tool surface.
+duckdb>=1.0
+
+# Data-model + validation. Direct dep: pipeline/leads.py (the Lead contract)
+# and fraud-investigator-v2 schemas use pydantic BaseModel. Previously only
+# transitive via pydantic-ai-slim; promoted to direct since the data pipeline
+# now imports it at runtime.
+pydantic>=2
+
+# Model-agnostic agent framework. `-slim` ships minimal deps; the
+# [openai,anthropic] extras install the provider SDKs. Add [google]
+# if you point _default_model / _counsel_model at a Gemini model.
+# Docs: https://ai.pydantic.dev
+pydantic-ai-slim[openai,anthropic]>=1.0
+
+# Loads .env into os.environ on import so ANTHROPIC_API_KEY /
+# OPENAI_API_KEY / etc. can live in a gitignored .env instead of the
+# shell profile. fraudlib.pipeline.agents calls load_dotenv() at
+# module-import time; if python-dotenv isn't installed the call is a
+# no-op (keys must then be set explicitly in the environment).
+# Model selection is NOT via env — edit _default_model / _counsel_model
+# in fraudlib/pipeline/agents.py.
+python-dotenv>=1.0
+
+# Model persistence for the XGBoost FraudModel. Used by
+# fraudlib.train_test.pipeline.save_model / load_model so the trained
+# artifact can be cached under data/processed/models/ and re-used
+# across backtest runs without retraining.
+joblib>=1.3
+
+# BM25 retrieval for the Investigator's case-library search tool (see
+# fraudlib/pipeline/case_search.py). Falls back to sklearn TF-IDF +
+# cosine if rank_bm25 isn't importable.
+rank_bm25>=0.2
+
+# Policy/guidelines corpus ingest — see fraudlib/ingest/ and
+# fraudlib/pipeline/policy_search.py. pymupdf4llm does layout-aware PDF
+# → markdown for IOM manuals, CERT, MedPAC. trafilatura extracts
+# article-quality HTML from OIG pages. lxml parses CMS Coverage
+# Database XML.
+pymupdf4llm>=0.0.17
+trafilatura>=1.6
+lxml>=5.0
+
+# Court-ready PDF rendering for the case dossier. fraud-investigator-v2's
+# dossier.py emits 05_Counsel_Memorandum.pdf (pdf_brief.py) + 06_Qui_Tam_Complaint.pdf
+# (pdf_qui_tam.py) for FILE-verdict cases. The emit is best-effort: WITHOUT
+# reportlab the dossier silently skips both PDFs (logs a warning, ships only
+# the .md/.json) — which is why some runs shipped no complaint/memo PDF.
+reportlab>=4
+
+# Provider-agnostic agent backend (FRAUD_INV_EXEC_BACKEND=api): one interface to
+# Anthropic, OpenAI, Gemini, OpenRouter, Mistral, local Ollama/vLLM, and more.
+# Not needed if you only use the Claude Code CLI backend.
+litellm>=1.40

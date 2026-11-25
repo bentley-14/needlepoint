@@ -1,0 +1,185 @@
+#  pipeline_contract.yaml — CANONICAL pipeline config, single source of truth.
+#
+#  Humans edit this file when canonical config changes. Two consumers check the
+#  live pipeline against it ON LOAD, so silent drift can't cost hours of compute:
+#    - scripts/preflight_walk_forward.py  -> feature_cache section
+#    - fraudlib.pipeline_contract.verify_pipeline_contract()  -> runner_config
+#  Human-readable companion (rationale + diagrams): docs/WALK_FORWARD_PIPELINE.md
+#
+#  Ablation toggles (2026-06-09, env-gated, default OFF — canonical values below
+#  are unaffected): NO_RULE_FEATURES=1 drops rule__* from the training matrix
+#  (OUT_DIR suffixed _norules); WF_OUT_SUFFIX=<tag> suffixes OUT_DIR for same-env
+#  A/B re-runs. NP_R2_STAGING=1 stages the working-set parquets from R2 at walk start
+#  and purges on completion (R2 = source of truth; disk = transient scratch).
+#  All three are opt-in, behavior-neutral when off.
+#  See docs/WALK_FORWARD_PIPELINE.md §8b.
+#
+#  DRIFT POLICY (chosen 2026-05-28): verify_pipeline_contract WARNS loudly on any
+#  deviation and writes a per-run provenance manifest into the run output dir.
+#  It HARD-ERRORS only on entries under `invariants` (never-deviate). Experiments
+#  may deviate from non-invariant values freely; the manifest records what each
+#  run actually used.
+
+version: 3
+updated: "2026-05-31"
+
+# ──────────────────────────────────────────────────────────────────────────
+#  NEVER-DEVIATE INVARIANTS — verify_pipeline_contract HARD-ERRORS on a mismatch.
+# ──────────────────────────────────────────────────────────────────────────
+invariants:
+  label_source:
+    path: data/extracted/gold_set.jsonl   # DOJ cases only; LEIE fully dropped 2026-05-05
+    kind: doj_only
+    min_confidence_for_training: high
+    join_key: npi                          # renamed from v4_npi 2026-05-31; loaders keep a v4_npi fallback
+  gnn_form: pca                            # raw gnn_embed_* is ALWAYS forbidden
+  gnn_pca_dims: 16
+  no_feature_leakage: true                 # no label/score cols in the feature cache
+
+# ──────────────────────────────────────────────────────────────────────────
+#  FEATURE CACHE — checked by scripts/preflight_walk_forward.py against
+#  data/cache/feature_frames/features_full_{year}.parquet
+# ──────────────────────────────────────────────────────────────────────────
+feature_cache:
+  gnn:
+    pca_prefix: gnn_pca_
+    pca_dims: 16
+    in_vocab_flag: gnn_in_vocab
+    raw_forbidden_prefix: gnn_embed_
+  centrality:
+    required: [graph_hcpcs_pagerank_full, graph_hcpcs_clustering_full]
+    forbidden: [graph_hcpcs_x3_diagonal]
+  extra_families:                          # mode-dependent (dmer_/xprog_)
+    maximal_sane: [dmer_, xprog_]          # PRESENT  (current canonical)
+    baseline_exact: []                     # ABSENT
+  leakage_fragments:                       # any feature col containing these => FAIL
+    [y_eval, y_doj, y_leie, archetype, scheme_, arch_, fraud_case, fraud_label,
+     fraud_leie, label_source, label_confidence, label_bucket, case_ids,
+     case_fraud_types, rrf_rank, score_rrf, score_xgb, score_anomaly,
+     score_neural, score_specialty]
+  rows: {min: 800000, max: 2500000}
+  # Verified family counts for a FULL year (2017+ schema; 504 cols total).
+  # Earlier years legitimately differ; preflight XYEAR_CONSIST treats the gaps
+  # below as INFO, not failures.
+  family_counts_full_year:
+    hcpcs: 242
+    partb: 124
+    dmer: 32
+    partd: 31
+    gnn_pca: 16
+    cl: 14
+    dme: 14
+    op: 12
+    bauder: 8
+    xprog: 5
+    graph_centrality: 2
+  availability_gaps:
+    partb_chronic_condition_cols: "2017+"  # +25 cc cols published by CMS from 2017
+    dmepos_derived_families: "2014+"       # dme/dmer/xprog; DMEPOS PUF starts 2014 (0 in 2013)
+    dmepos_2024_absent: true               # CMS has not released 2024 DMEPOS → dme/dmer/xprog absent in 2024 (reindex-handled). features_full_2024 = 453 cols (504 - 51 DMEPOS), else family-parity with 2023.
+  percentiles:                             # how *_pct / *_global_pct features are built (baked into the cache)
+    peer_pct: {groupby: [provider_type, state], na_option: keep}
+    hcpcs_rich: {groupby: [provider_type], na_option: bottom}   # FIX QUEUED (#7) -> groupby [provider_type, state]
+
+# ──────────────────────────────────────────────────────────────────────────
+#  RUNNER CONFIG — checked by verify_pipeline_contract() at runner startup
+#  against the live constants in scripts/experiments/walk_forward_v4.py
+# ──────────────────────────────────────────────────────────────────────────
+runner_config:
+  splits:
+    scheme: walk_forward                   # train <= score_year-2 ; val = score_year-1 ; score = score_year
+  heads:
+    scheme_module: schemes                 # 10-scheme base lookup
+    label_prefix: scheme_
+    train_full: [PHANTOM_BILLING, MED_UNNECESSARY, KICKBACK, OPIOID, UPCODING]  # 5-head canonical
+    train_small: []                        # disabled — satellite heads hurt R@K
+    dropped: [HHA_HOSPICE, DME, TELEHEALTH, LAB_FRAUD, NPI_THEFT]
+    min_pos_to_train: 5                    # heads with < 5 positives are skipped
+    combine: sum_proba                     # xgb_s = Σ_h predict_proba[:,1]  (ablation in progress — task #4)
+  xgb:
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.1
+    min_child_weight: 1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    tree_method: hist
+    enable_categorical: true
+    eval_metric: aucpr
+    early_stopping_rounds: 50
+    random_state: 0
+    scale_pos_weight: "(n_neg / n_pos) * 2.0"
+  neural:                                  # fraudlib/ranker/multitask.py (MultitaskConfig + runner overrides)
+    hidden_dims: [128, 64, 32]             # runner override of (256,128,64) default
+    dropout: 0.3
+    lr: 1.0e-3
+    weight_decay: 1.0e-4
+    batch_size: 4096
+    n_epochs: 50
+    patience: 8
+    device: auto                           # mps/cuda/cpu; MULTITASK_DEVICE env overrides. Results device-dependent (reproducible per-device). MPS verified not degrading 2026-05-29.
+    seed: 0                                # seeds torch + numpy + DataLoader; MULTITASK_SEED env overrides (added 2026-05-29)
+    pos_weight_cap: 50000.0                # inverse-freq cap; intentionally != XGB's *2.0 (issue #3, kept)
+    subsample: 300000                      # NEURAL_SUBSAMPLE negative cap
+    aggregation: sum                       # score_multitask: sum | max ("mean" not implemented)
+  perspecialty:                            # scripts/experiments/run_tier1_combined.py
+    enabled: false                         # DISABLED 2026-05-30 — perspec=0 beats (3,1,0.3) at every k + removes the top-100 cardiology flood; weak standalone (R@10k 0.147). USE_PERSPECIALTY=False in walk_forward_v4.py. See history.perspecialty + blend_weights.
+    n_buckets: 0                           # inert while disabled (4-bucket re-bind removed; SPECIALTY_BUCKETS reverts to full import if perspec is ever re-enabled)
+    min_positives: 5
+    min_rows: 100
+    early_stopping_rounds: 20              # NOTE: differs from main heads (50)
+    xgb_same_as_main_heads: true           # n_est=300, depth=8, lr=0.1, subsample/colsample=0.8, scale_pos_weight*2.0
+  agent_filter:
+    enabled: true
+    name: floor_0.50                       # baseline-comparable; _rederived deferred (issue #2)
+    applies_to: [train, val, score]        # KEPT 2026-05-29 — score panel stays filtered
+    floor_percentile: 10                   # P10 of positive payments (hardcoded basis)
+    floor_multiplier: 0.5                  # the "0.50"
+    spec_le0_threshold: 0                  # drop specialties with 0 train positives
+    state_le2_threshold: 2                 # drop states with <=2 train positives
+  blend:
+    method: rank_rrf
+    rrf_k: 60
+    weights: {xgb: 3.0, neural: 1.0, perspec: 0.0}   # CANONICAL (locked 2026-05-30) — XGB-heavy + neural, perspec DROPPED; BLEND_W in walk_forward_v4.py; see history.blend_weights
+  caps:
+    max_neg_per_year: 500000
+    train_matrix_dtype: float32            # cast float64 feature cols → float32 at load (memory): halves the ~13.6GB float64 train matrix so the 500k cap fits 16GB. XGBoost hist + neural are float32 internally → lossless for them, sub-noise for ranking. Adopted 2026-05-31; not verifier-checked (no runner constant). See history.precision + WALK_FORWARD_PIPELINE.md §9.13.
+  cat_cols: [nppes_credential_bucket, nppes_taxonomy_bucket]
+  rules_path: fraudlib/rules/rules_v3.json
+  persisted_score_columns:                 # written to scored_full_{year}.parquet (2026-05-29, task #2)
+    - score_rrf
+    - score_xgb_sum
+    - score_neural_sum                      # NaN if neural off
+    - score_perspec                         # NaN if per-specialty off
+    - "head__{SCHEME}"                      # one per training head (head-weighting ablation)
+  persisted_sidecar: components_meta_{year}.json   # per-head {best_iter, best_score(val-AUPRC), n_pos}
+  contract_check_at_startup: true          # verify_pipeline_contract wired into walk_forward main()
+
+# ──────────────────────────────────────────────────────────────────────────
+#  HISTORY — why values are what they are, so we don't relearn the hard way.
+# ──────────────────────────────────────────────────────────────────────────
+history:
+  blend_weights:
+    - "Baseline runner (committed e5416c2c) used (1,3,0.5) with comment 'proven robust +2.7pp R@10k lift'."
+    - "2026-05-28: verified on clean labels the +2.7pp does NOT reproduce — (1,3,0.5) ranks 9/12, loses to (1,1,1). Runner reverted to (1,1,1)."
+    - "2026-05-29 (ADOPTED, resolves task #3): (3,1,0.3) — XGB-heavy, perspec-light — on the RESTRICTED 4-bucket per-specialty. Structural validation across BOTH neural seeds: +0.0222 R@10k (seed0, 7/9 yrs) and +0.0141 (seed1, 6/9) vs the (3,1,0) drop, 0 regressions in 18 (seed×yr) cells. NB: validated post-hoc on the perspec4 panels — a confirmatory canonical run is the recommended follow-up."
+    - "2026-05-30 (LOCKED, supersedes the above): (3,1,0) — perspec DROPPED. A perspec=0 weight sweep across 2015-2023 (post-hoc re-blend on the persisted component scores) showed: (a) dropping perspec beats (3,1,0.3) at every k — mean R@10k 0.446 vs 0.432 (+1.4pp), R@5k +3.4pp; (b) XGB+neural at ~3:1 beats pure XGB by +5.5pp R@10k (0.446 vs 0.390) — neural is NOT redundant, perspec was masking it in the equal-weight blend; (c) removes the cardiology top-100 flood. (2,1,0) is marginally better at R@1k (0.116 vs 0.110) if optimizing the agent-fed head. The earlier (3,1,0.3) 'beats (3,1,0)' result was an artifact of the restricted 4-bucket perspec on the perspec4 panels; the full-bucket perspec arm is net-negative on recall."
+  perspecialty:
+    - "2026-05-29: restricted SPECIALTY_BUCKETS 35 -> 4 {Cardiology, Podiatry, Pain_PMR, Emergency_Medicine} (re-bound in walk_forward_v4.py). The other ~31 overlapping buckets diluted R@K (add-one-in marginal test). Resolves the issue #8 overlap concern by dropping to the orthogonally-valuable set."
+    - "2026-05-30: DISABLED the per-specialty arm entirely (USE_PERSPECIALTY=False) + removed the 4-bucket re-bind. Perspec is a weak standalone ranker (mean R@10k 0.147) and its in-blend contribution is net-negative on recall (see blend_weights 2026-05-30); the 4-bucket restriction also caused the cardiology top-100 flood. Dropping it simplifies the pipeline — the n_buckets question is moot at weight 0. score_perspec persists as NaN."
+  hha_head:
+    - "2026-05-28: dropped HHA_HOSPICE (6 -> 5 heads). best_iter evidence: HHA dead (best_iter=1) in late years; adds value only when HHA fraud is prevalent (early years)."
+  gnn:
+    - "R2 features_full once silently carried RAW 64-dim gnn_embed_ + no centrality + dmer/xprog kitchen-sink (the 2026-05-28 incident that motivated preflight). Canonical is gnn_pca-16."
+  agent_filter:
+    - "2026-05-28: reverted floor_0.50_rederived -> floor_0.50 for baseline comparability."
+    - "2026-05-29: kept score-panel filtering (applies_to includes score) — reverted a proposed train/val-only change to preserve recall methodology."
+  persistence:
+    - "2026-05-29 (task #2): runner persists per-source scores + per-head probas + components_meta sidecar; verify_pipeline_contract wired into startup. MPS bug fixed (pos_weight float32)."
+  data_2024:
+    - "2026-05-29: enabled score-year 2024. Ingested re-posted RY26 PUFs (Part B Prov + Prov_Svc, Part D) + Open Payments PGYR2024; built cms_hcpcs_features_2024; re-aligned the OP 2024 panel to the raw CMS schema so compute_op_features matches 2013-2023. No 2024 DMEPOS released → dme/dmer/xprog absent (reindex-handled). features_full_2024 = 453 cols, family-parity with 2023 minus DMEPOS."
+    - "2026-05-29: GNN export is deterministic — the 05-29 retrain reproduced the 05-28 embeddings to ~1e-6 (perfect in_vocab agreement). So 2013-2023 frames were left untouched (already at gnn-parity); gnn_pca + centrality were attached to 2024 only (scripts/swap_gnn_pca_parity.py)."
+  precision:
+    - "2026-05-31: train/val feature matrices cast float64 → float32 at load (walk_forward_v4.py _load_stamped + reindex). Motivation: a full 500k-cap train pool (~3M rows × 544 cols) is ~13.6GB at float64 and OOMs 16GB; float32 is ~6.8GB. XGBoost `hist` bins to 256 buckets and the neural net trains in float32, so float32 is lossless for both and sub-noise for ranking (a 500k-cap rederived-filter A/B on 2024 moved positive ranks by < the binning resolution; the R@10k delta was a single borderline positive). NOTE: results/current was built float64 (pre-adoption); it is a float64-era baseline and was NOT rebuilt — the float32 difference is below the recall noise floor."
+  labels:
+    - "2026-05-29: labels_v2.load_cases hardened (.get for case_id/fraud_types/tier/outcome) + label_providers_with_cases guards empty/no-npi eligible — the NPI-centric gold_set yields no defendants[] via the legacy loader. Robustness only; no label-value change."

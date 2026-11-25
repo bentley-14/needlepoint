@@ -1,0 +1,152 @@
+# Coverage-rule falsity-anchor registry — the fileability map.
+#
+# Doctrine (2026-07-18, the Lab Ebony lesson): an org case is fileable on PUBLIC
+# data iff its MO violates a PUBLIC coverage-rule anchor (LCD/NCD/Article/
+# regulation that makes individualized necessity a condition of payment) — not
+# merely because the math is extreme. This registry makes that knowledge DATA:
+# the target screen ranks the fileable band first, and the evidence pack
+# injects the anchor at Step-0 so counsel starts with the falsity theory.
+#
+# VERIFIED-ONLY policy (the 99489 rule): every entry cites where WE verified it
+# (a run, a pre-flight, or a statute we have read). verify_via gives the
+# replayable command. Do NOT add entries from memory without verification.
+# fileable_band: true = a public anchor exists that a blanket/uniform pattern
+# can violate on its face; false = falsity lives in non-public facts (charts,
+# EVV, insiders) -> referral track.
+
+families:
+  definitive_udt:
+    codes: ["G0480", "G0481", "G0482", "G0483"]
+    anchor_type: lcd_article
+    anchor_ids: ["L36707", "A56760"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Controlled Substance Monitoring and Drugs of Abuse Testing LCD family:
+      definitive (confirmatory) testing must be reasonable, necessary, and
+      individualized to the patient's clinical presentation; standing-order /
+      blanket max-tier panels are expressly disfavored. Blanket top-tier
+      uniformity (Lab Ebony 84% G0483; Rowan G0483 3.7x/yr on 80% of panel)
+      violates the condition on its face.
+    verified_by: "Rowan pre-flight GREEN + filed case; Lab Ebony calibration flip WEAK->SETTLEMENT_READY on this anchor (2026-07-18)"
+    verify_via: "python scripts/lcd_lookup.py --hcpcs G0483 --effective-on <date> --format json"
+
+  genetic_panels:
+    codes: ["81443", "81445", "81455", "81479", "0242U"]
+    code_prefixes: ["814", "815", "0"]
+    anchor_type: lcd_article
+    anchor_ids: ["L36715", "A56541"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Molecular/genetic testing coverage requires panel relevance to the
+      individual patient's condition (personal/family history, treatment
+      implications); broad panels run population-wide without individualized
+      indication violate the coverage condition.
+    verified_by: "Genview calibration run iter-4 (loop cited Article 56541 / LCD 36715 as the contemporaneous predicate)"
+    verify_via: "python scripts/lcd_lookup.py --hcpcs 81455 --effective-on <date> --format json"
+
+  skin_substitutes:
+    code_prefixes: ["Q41", "Q42"]
+    anchor_type: lcd_family_mac_specific
+    anchor_ids: ["MAC-specific wound-care LCD family (e.g. L35041 class)"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Skin-substitute application is covered only for qualifying chronic wounds
+      after documented conservative care, with application-count limits;
+      uniform high-frequency application across a panel violates the condition.
+    verified_by: "LCD coverage limits verified against the LCD text"
+    verify_via: "python scripts/lcd_lookup.py --hcpcs Q4276 --effective-on <date> --format json"
+
+  hospice:
+    codes: ["Q5001", "Q5002", "Q5003", "Q5004", "Q5005", "Q5006", "Q5007", "Q5008", "Q5009", "Q5010", "G0182"]
+    anchor_type: regulation
+    anchor_ids: ["42 CFR 418.22"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Hospice payment is conditioned on physician certification of terminal
+      illness (<=6-month prognosis). Population-level eligibility-implausibility
+      (extreme long-stay share, live-discharge rates) can contradict the
+      certification condition; the classic org archetype (California Hospice
+      Care conviction class).
+    verified_by: "statutory condition; hospice-fraud label class (3 confirmed labels); NOT yet run through a calibration"
+    verify_via: "eCFR 42 CFR 418.22 (statute text; stable)"
+
+  home_health_cert:
+    codes: ["T1021", "T1022", "G0299", "G0300"]
+    code_prefixes: ["G015", "G016", "G017"]
+    anchor_type: regulation
+    anchor_ids: ["42 CFR 424.22"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Home-health payment requires physician certification incl. homebound
+      status + face-to-face encounter. Certifying-physician concentration +
+      eligibility-implausible populations contradict the condition (Family
+      Healthcare Group conviction class).
+    verified_by: "statutory condition; multiple HH conviction labels; NOT yet run through a calibration"
+    verify_via: "eCFR 42 CFR 424.22"
+
+  power_mobility_dme:
+    code_prefixes: ["K08"]
+    codes: ["E1161"]
+    anchor_type: regulation_ncd
+    anchor_ids: ["42 CFR 410.38", "NCD 280.3"]
+    individualization_required: true
+    fileable_band: true
+    basis: >
+      Power mobility devices require an in-person evaluation and documented
+      in-home mobility need; forged/absent evaluations are the convicted
+      wheelchair-mill class (CHH/Cooper/Onward labels).
+    verified_by: "regulation + wheelchair-mill conviction labels; DME detailed panels in R2"
+    verify_via: "eCFR 42 CFR 410.38"
+
+  # ── NOT fileable on public data (falsity lives in non-public facts) ──────
+  em_office_visits:
+    codes: ["99211", "99212", "99213", "99214", "99215", "99232", "99233", "99309", "99310"]
+    anchor_type: none
+    individualization_required: false
+    fileable_band: false
+    basis: >
+      E&M level selection has NO public per-claim condition a distribution can
+      violate on its face; uniformity is camouflage-compatible (MDCareNow
+      convicted at p93 — decline was mandatory on public data). Referral track
+      or chart-level evidence only.
+    verified_by: "MDCareNow calibration (2026-07-18): convicted TP, correctly un-pleadable on aggregates"
+
+  personal_care_wraparound:
+    codes: ["T1019", "T1020", "H2021", "S5125", "S5130", "S5150", "S5151"]
+    anchor_type: state_evv_records
+    anchor_ids: ["21st Century Cures Act sec. 12006 EVV mandate (state-administered)"]
+    individualization_required: false
+    fileable_band: false
+    basis: >
+      Personal-care/wraparound falsity (hours not rendered) is provable via
+      state EVV records — which are NON-PUBLIC (CORA/records request or
+      insider). No public per-claim anchor (the CO cluster lesson).
+    verified_by: "CO Family Caregivers case CALIBRATION+prod runs (2026-07-17/18): EVV named as the one clean anchor path, out-of-band"
+
+  behavioral_sud_hours:
+    codes: ["H2035", "H2019", "H2015", "H2017", "H0035", "H0047", "H0004", "H0038", "H2014", "H0011", "H0032"]
+    anchor_type: none
+    individualization_required: false
+    fileable_band: false
+    basis: >
+      Hourly SUD/behavioral services: not-rendered falsity leaves no public
+      trace at monthly grain (Edgewater: convicted $42.8M, zero pre-cutoff
+      public signal). Referral / insider / state-records track.
+    verified_by: "Edgewater calibration (2026-07-18)"
+
+  nemt:
+    codes: ["T2001", "T2002", "T2003", "T2004", "T2005", "T2007"]
+    code_prefixes: ["A0"]
+    anchor_type: state_rules
+    individualization_required: false
+    fileable_band: false
+    basis: >
+      NEMT trip legitimacy is governed by state-specific rules and trip logs
+      (non-public). State PI units actively screen this class (CO ring
+      indictments Feb 2026) -> low novelty + no public anchor.
+    verified_by: "CO NEMT enforcement wave (public record); ConnectAbility re-rank lesson"

@@ -1,0 +1,64 @@
+{
+  "$comment": "Synth-claims config for the Aspen (NPI 1900000007) incident-to calibration. The original CALIBRATION-5B2E14D2 v3 run was driven by these exact values — preserving them here as the first generalized config means the refactored engine produces byte/row-equivalent output, and the pinned v3 case state remains reproducible.",
+
+  "case_id": "aspen",
+  "subject_npi": "1900000007",
+  "cutoff_year_start": 2013,
+  "cutoff_year_end": 2019,
+  "synthea_dir": "tools/synthea/output_ky/csv",
+  "seed": 20200101,
+
+  "peer_cohort": {
+    "state": "KY",
+    "specialty": "Family Practice",
+    "count": 150,
+    "claims_cap_per_year_per_peer": 60,
+    "em_only": true
+  },
+
+  "scheme": {
+    "type": "incident_to",
+    "$doc": "Scheme injection: a fraction of subject's ESTABLISHED + NEW-patient E&M claims are split from billed_under_npi (subject) into rendering_npi=<one of renderer_npis>. The 'fraud' is rendering != billed-under without the conditions of 42 CFR 410.26 being met. The intensity grows over the cutoff window. Enrollment-gating prevents pre-enrollment NP attributions.",
+
+    "renderer_npis": {
+      "1900000040": {
+        "name": "C. SCHANIE",
+        "enrollment": "2015-06-05",
+        "$comment": "Real NPPES enrollment date (verified via sandbox_nppes 2026-06-05)"
+      },
+      "1900000078": {
+        "name": "J. DAWSON",
+        "enrollment": "2015-10-21"
+      }
+    },
+
+    "co_located_npis": [
+      "1900000074", "1900000049", "1900000051", "1900000038",
+      "1900000029", "1900000031", "1900000046", "1900000058"
+    ],
+    "$co_located_doc": "Real co-located providers at 4010 Dupont Cir per address_sweep. These get fully-disaggregated REAL panel rows (no scheme injection) — they ARE the within-building control the agent uses to argue the scheme is subject-specific, not practice-wide.",
+
+    "intensity_by_year": {
+      "established": {
+        "2013": 0.45, "2014": 0.50, "2015": 0.55, "2016": 0.58,
+        "2017": 0.60, "2018": 0.62, "2019": 0.65
+      },
+      "new_patient": {
+        "2013": 0.25, "2014": 0.30, "2015": 0.35, "2016": 0.40,
+        "2017": 0.45, "2018": 0.50, "2019": 0.50
+      },
+      "$doc": "Per-year fraction of subject's billed-under E&M that is NP-rendered. Ancillary codes (labs, vaccines, G-codes) are always rendered by the subject (MD) — share=0."
+    }
+  },
+
+  "compliant_background": {
+    "$doc": "~30% of peers run COMPLIANT incident-to via a randomly-paired real KY NP. Within those peers, 22% of established E&M claims have rendering != billing. This makes 'rendering != billed-under' a normal pattern in the data (not a fraud label), so the agent must use SCHEME-PROFILE evidence to conclude the subject is the outlier.",
+    "renderer_pool": {
+      "state": "KY",
+      "specialty": "Nurse Practitioner",
+      "pool_size_min": 20
+    },
+    "peer_assignment_fraction": 0.30,
+    "established_rendering_fraction": 0.22
+  }
+}

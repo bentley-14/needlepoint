@@ -1,0 +1,26 @@
+name: tests
+
+# Follows the README install path on Linux: make setup, make test, then one agent
+# data tool reading from the public dataset with no credentials.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  setup-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: make setup
+        run: make setup
+      - name: make test
+        run: make test
+      - name: Read billing rows from the public dataset
+        run: |
+          .venv/bin/python scripts/dump_hcpcs_breakdown.py --npi 1003181306 --year 2023 | tee out.txt
+          grep -q 99483 out.txt

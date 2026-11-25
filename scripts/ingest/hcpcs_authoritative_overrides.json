@@ -1,0 +1,15 @@
+{
+  "_doc": "Authoritative HCPCS/CPT constants that OVERRIDE the CMS Part B PUF descriptor when the PUF copy is wrong. The PUF HCPCS_Desc is a denormalized copy and has drifted for some codes (e.g. 99489 wrongly flipped 'each additional 30 minutes' -> '60 minutes' in 2021-2024, ~2x-ing any unit->time math). hcpcs_lookup.py cross-checks the PUF descriptor's parsed minutes against minutes_per_unit here; on conflict it uses the authoritative value and emits a hard warning. Source of truth = AMA CPT. Add codes here whenever a unit->time/$ conversion depends on a code's definition. Verified 2026-06-11.",
+  "codes": {
+    "99487": {"minutes_per_unit": 60, "authoritative_descriptor": "Complex chronic care management services, first 60 minutes of clinical staff time directed by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT"},
+    "99489": {"minutes_per_unit": 30, "authoritative_descriptor": "Complex chronic care management services, each additional 30 minutes of clinical staff time directed by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT (CMS PUF wrongly shows 60 min for 2021-2024)"},
+    "99490": {"minutes_per_unit": 20, "authoritative_descriptor": "Chronic care management services, first 20 minutes of clinical staff time directed by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT"},
+    "99439": {"minutes_per_unit": 20, "authoritative_descriptor": "Chronic care management services, each additional 20 minutes of clinical staff time directed by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT"},
+    "99491": {"minutes_per_unit": 30, "authoritative_descriptor": "Chronic care management services, first 30 minutes provided personally by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT"},
+    "99437": {"minutes_per_unit": 30, "authoritative_descriptor": "Chronic care management services, each additional 30 minutes provided personally by a physician or other qualified health care professional, per calendar month", "basis": "AMA CPT"},
+    "96164": {"minutes_per_unit": 30, "authoritative_descriptor": "Health behavior intervention, group (2 or more patients), face-to-face; initial 30 minutes", "basis": "AMA CPT"},
+    "96165": {"minutes_per_unit": 15, "authoritative_descriptor": "Health behavior intervention, group (2 or more patients), face-to-face; each additional 15 minutes", "basis": "AMA CPT (CMS PUF wrongly shows 30 min for 2022-2024)"},
+    "96167": {"minutes_per_unit": 30, "authoritative_descriptor": "Health behavior intervention, family (with the patient present), face-to-face; initial 30 minutes", "basis": "AMA CPT"},
+    "96168": {"minutes_per_unit": 15, "authoritative_descriptor": "Health behavior intervention, family (with the patient present), face-to-face; each additional 15 minutes", "basis": "AMA CPT (CMS PUF wrongly shows 30 min for 2022-2024)"}
+  }
+}

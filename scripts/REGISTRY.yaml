@@ -1,0 +1,172 @@
+# scripts/REGISTRY.yaml — canonical script registry
+# Finalized 2026-06-09 after the 2026-06-09 cleanup (113 one-off/experiment scripts deleted; see git history).
+# RULE for humans + agents: only `canonical` (and `library`) entries are authoritative about CURRENT behavior.
+# `scrape` entries are retained tooling for DOJ scraping. Anything not listed here does not exist in scripts/.
+# Pre-commit guard #6 blocks adding scripts that are not registered here.
+_meta:
+  generated: 2026-06-15
+  total_scripts: 146
+entries:
+  "scripts/__init__.py": {status: canonical, role: "package marker (python -m scripts.*)"}
+  "scripts/labelgen_confirm.py": {status: canonical, role: "labelgen stage 4 — chunked Opus 3-gate confirm over grounded candidates (~50/chunk, ONE claude -p --model claude-opus-4-8 call per chunk): G1 disposition RESOLVED on the public record (charge/indictment fails), G2 right-entity (NPI is THE defendant org, not an NPPES name-twin — uses identity_candidates + venue_match), G3 government-healthcare billing-fraud scope (kickback-based FCA counts; pure bank/tax/immigration fraud fails); strict-JSON-array output, whole-chunk retry then per-candidate needs_human parse fallback; cap-aware, chunk-resumable (chunk id = hash of member uuids); emits entity_labels_CONFIRMED_<date>.jsonl + review .md; --dry-run prints planned chunks"}
+  "scripts/labelgen_land.py": {status: canonical, role: "labelgen stage 5 — lands confirmed keeps into data/extracted/entity_labels.jsonl (landing schema org_npi/defendant_name/label_class/confidence/basis/state/disposition/scheme_summary/source_url/provenance/label:fraud; provenance stamped haiku_harvest+sonnet_escalation+opus_confirm_<date>): timestamped .bak of the target FIRST, dedupe by org_npi vs existing rows AND within-batch, refuses any target not literally named entity_labels.jsonl; NEVER touches gold_set.jsonl"}
+  "scripts/labelgen_ground.py": {status: canonical, role: "labelgen stage 3 — DETERMINISTIC (no-LLM) grounding: filters LLM extractions (in_scope && is_resolved && label_class org/medicaid/facility && named entity; --escalated overlay replaces Haiku rows), NPPES-resolves name->Type-2 org NPI with venue cross-check + twin-NPI collapse + facility/Medicaid/Medicare surface-confirm (identity/surface logic copied verbatim from mine_entity_labels.py, feat/entity-labels — see ORIGIN note; its regex extraction is NOT reused), dedupes vs entity_labels.jsonl + gold_set + within-run; emits grounded_candidates_<date>.jsonl + review .md + funnel counters, and side-emits individuals_for_curator_<date>.jsonl for the existing curator flow (never lands individuals itself)"}
+  "scripts/labelgen_escalate.py": {status: canonical, role: "labelgen stage 2 — Sonnet re-read of hard cases (extract.escalate==true OR confidence==low) with the FULL release body (uuid-join to data/source/doj_api/raw_press_releases.jsonl, HTML->text, no truncation), ONE release per call (batching degrades entity extraction), 2 workers; same output schema as stage 1 so an escalated row REPLACES the Haiku row downstream; cap-aware + resumable by uuid; --dry-run prints planned calls"}
+  "scripts/labelgen_extract.py": {status: canonical, role: "labelgen stage 1 — LLM-read (Haiku) label extraction over DOJ press releases: reads title+body prose, emits structured fraud-label extractions (in_scope/primary_entity_name/label_class/disposition/is_resolved/escalate) as JSONL; replaces regex-based extraction; cap-aware (session-window reset backoff honoring the quoted tz), resumable by uuid, parallel workers; promoted copy of the scratchpad driver behind the live doj_haiku_extractions_2026-07-14 harvest"}
+  "scripts/compute_entity_features.py": {status: canonical, role: "all-payer entity upgrade P2 item 2 — entity feature frame: aggregates fraudlib/entity/resolve.py's entity_graph_{year}.parquet member NPIs into one row per entity_id (n_members, entity_total_pay, dominant_specialty, has_type2_member, enumeration_cadence, cross_member_code_uniformity, pct_members_anomalous, collectible_entity)"}
+  "scripts/train_entity_head.py": {status: canonical, role: "P4 org/entity scoring head — trains + walk-forward-evals the SEPARATE org head over the T-MSIS Medicaid billing universe (unit = org NPI; medicaid + NPPES + entity-cluster feature blocks; entity_labels.jsonl enforcement-dated labels, predict-before-enforcement, ranker-derived cols excluded from the primary eval) and exports results/entity_head/entity_scores_{year}.parquet for the target screen; frozen Part-B baseline untouched (docs/design/p4_entity_head_spec.md)"}
+  "scripts/entity_target_screen.py": {status: canonical, role: "entity TARGET SCREEN — turns P4 entity_scores_{year}.parquet into a reviewable shortlist by applying the deterministic qui tam counsel gates: government-known exclusion (entity_labels + curator grounded/CONFIRMED files + gold_set NPIs; labels are training signal, targets are the unlabeled lookalikes), Type-2/collectibility pay floor, NPPES + medicaid-field enrichment -> results/entity_head/target_shortlist_<date>.{jsonl,md}; filter+report only, never launches investigations, never writes labels"}
+  "scripts/foreclosure_proxy.py": {status: canonical, role: "PUBLIC-PROXY retrieval for the foreclosure gate (data/reference/foreclosure_proxies.yaml) — per innocent-explanation taxonomy_tag: which PUBLIC sources bear on it, run the retrievable ones (PECOS reassignment workforce via Group PAC ID, T-MSIS servicing roster, NPPES scope, LEIE/revocation/board), and flag the genuinely non-public ones (EVV, charts) where cannot_close_pre_filing is CORRECT. Stops the gate conceding explanations public data can close"}
+  "scripts/entity_lookup.py": {status: canonical, role: "investigator runtime lookup tool — entity/provider GRAPH TRAVERSAL (P5): npi -> identity + entity membership + co-members + Medicaid/Part-B summary + BOTH directions of the T-MSIS billing<->servicing split (who renders under this org / which orgs this NPI renders for); entity -> member roster + features; org-name -> NPPES Type-2 search; shared-staff -> orgs sharing servicing NPIs (ring edge). Local-only, JSON out; servicing-field self-report caveat rides every answer"}
+  "scripts/medicaid_preflight.py": {status: canonical, role: "Medicaid ORG pre-flight — deterministic foreclosure math before loop spend (the Medicaid-org analog of innocent_explanation_prescreen.py): LEIE, paid-per-patient intensity pctile vs same-state same-code peers, descriptor-parsed hours math (lower-bound, gated on servicing-field quality — validated: org billers often self-report servicing), monthly trajectory + cliff/growth flags, ring scan via shared NPPES name tokens + SHARED SERVICING NPIs across orgs; tracks per_se_candidate / ambiguous_needs_judgment / benign_leaning; screen not proof"}
+  "scripts/hunt_tier3_partb.py": {status: canonical, role: "TIER-3 fileable hunt on Medicare Part B — the Rowan archetype: providers billing definitive-UDT G0483 at blanket max-tier share (G0483/all-UDT) WHILE billing office E&M (order-and-render = controls the individualization decision -> the tier that reaches FILE per the Lab Ebony A/B), novel (not gold_set/LEIE). Read-only shortlist; anchor=LCD L36707"}
+  "scripts/mo_signatures.py": {status: canonical, role: "scheme-MO signature scorer: target by conviction MECHANICS not math extremity: recruitment_shape (growth x low-intensity), blanket_top_share + udt/em max_tier_share, metronome (phantom smoothness), scope_mismatch, new_entrant, is_public_entity; classify_mo names the best-fit MO by correlate config; honors FRAUD_INV_MEDICAID_CUTOFF; validated on convicted TPs (Evergreen->recruit, Lab Ebony->blanket, Genetic-Tech->none i.e. pure-kickback invisible in billing). Used by entity_target_screen.py to re-rank + drop public entities"}
+  "scripts/target_board.py": {status: canonical, role: "unified TARGET BOARD — joins org shortlist (MO+anchor cols) + individual ranker top-K (when local) + case history (state dirs + outcome ledger) into ONE queue ranked anchor_fileable > mo_correlates > score (the camouflaged-middle doctrine); --to-queue feeds np_queue; investigated targets never re-queued"}
+  "scripts/pull_relationship_data.py": {status: canonical, role: "relationship data layer pulls (tasks 73-75) — Open Payments OWNERSHIP (kickback-MO direct evidence), PECOS reassignment (individual->org edges), POS (CCN<->NPI facility bridge) via data.cms.gov catalog discovery -> data/processed parquets; per-source failure isolation; R2 push via existing make flow"}
+  "scripts/ops/label_refresh.sh": {status: canonical, role: "label FLYWHEEL runner (make label-refresh) — the promoted post-harvest chain: input top-up from the raw DOJ cache -> labelgen extract (Haiku, resumable) -> escalate (Sonnet) -> ground -> confirm (Opus) -> AUTO-LAND (user-authorized 2026-07-16; .bak; gold_set untouched) -> annotate_label_activity; every stage idempotent/no-op when current"}
+  "scripts/ops/outcome_ledger.py": {status: canonical, role: "case-outcome LEDGER — appends decided cases (prod+calibration state dirs) to validation/outcomes/case_outcomes.jsonl (idempotent); feeds target_board investigated-tags, battery precision stats, and adjudicated-TN proposals (proposals only)"}
+  "scripts/ops/annotate_label_activity.py": {status: canonical, role: "stamps entity_labels.jsonl with tmsis_window_activity.training_usable (window-activity audit: good/thin/none_pre_tmsis_floor/none_pharmacy_ncpdp_gap/none_no_activity) so train_entity_head excludes no-signal labels; .bak + atomic; label-refresh step 7"}
+  "scripts/add_centrality_to_features_full.py": {status: canonical, role: "centrality feature builder"}
+  "scripts/address_sweep.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/anchor_check.py": {status: canonical, role: "falsity-anchor existence gate (Step-0 evidence pack) — LCD/NCD/article coverage-rule availability for a HCPCS code, point-in-time gated via --effective-on; wraps lcd_lookup.py"}
+  "scripts/audit_case_numerics.py": {status: canonical, role: "Guardrail 2 — deterministic numeric-predicate audit: re-derives case claims from canonical constants, flags MISMATCH (fed to defense stage)"}
+  "scripts/audit_data_consistency.py": {status: canonical, role: "data_auditor consistency check"}
+  "scripts/audit_hcpcs_descriptors.py": {status: canonical, role: "HCPCS descriptor quantity-drift audit (reference integrity guard)"}
+  "scripts/browser_fetch.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/build_features_full_cache.py": {status: canonical, role: "features_full panel cache builder"}
+  "scripts/ca_exclusion_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/calibration/build_calibration_workspace.py": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration/build_synth_claims.py": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration/calibration_leak_tokens.py": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration/calibration_loop_watchdog.sh": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration/run_calibration_smoke.sh": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration/run_calibration_queue.sh": {status: canonical, role: "serial sleep-resilient calibration queue over battery TPs (tmux backend); skips completed, stops on watchdog leak"}
+  "scripts/calibration/select_calibration_tps.py": {status: canonical, role: "select recent + data-rich TRUE-POSITIVE backfill candidates for the battery from gold_set (as_of>=2018 data-coverage floor, Medicare billing surface present, not-already-in-battery, leak-safety flag vs DOJ date); DRY-RUN candidate list for human review, never writes battery.json"}
+  "scripts/calibration/select_tier1_controls.py": {status: canonical, role: "select Tier-1 negative controls — statistically typical, clean providers (near-median percentiles + fraud_case=0) from the ranker scored_full panel"}
+  "scripts/calibration/verify_calibration_cleanroom.sh": {status: canonical, role: "calibration clean-room"}
+  "scripts/calibration_audit.py": {status: canonical, role: "calibration scoring audit"}
+  "scripts/check_billing_surface.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/check_parked_cases.py": {status: canonical, role: "M3 — PARKED-case re-trigger scanner: checks each parked case's watch NPIs (target + co-billers) against revocations/LEIE/CA-S&I/gold_set refreshes and prints the stored resume command on a hit"}
+  "scripts/claims_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/clia_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/cluster_queue.py": {status: canonical, role: "M2 — queue-economics clustering: groups triage-queue HIGH/MODERATE candidates by exact practice address (Part B St1+Zip5) so one combined office-suite investigation replaces N overlapping per-NPI runs"}
+  "scripts/cohort_builder.py": {status: canonical, role: "adjudicated true-negative cohort builder (eval harness) — enumerates declined/merits-dismissed NOS-376 qui-tam dockets via CourtListener, classifies disposition (KEEP merits/voluntary vs EXCLUDE settlement/criminal/jurisdictional), DRY-RUN candidate list for human review; never writes battery.json"}
+  "scripts/cohort_screen_count.py": {status: canonical, role: "investigator runtime lookup tool (national cohort screen count — selection-effect / Integra data-dredging answer)"}
+  "scripts/compute_dmepos_detailed_rich_features.py": {status: canonical, role: "dmepos_detailed_rich feature builder — aggregates the code-level DMEPOS-referral PUF (cms_dmepos_detailed) to per-NPI features: code concentration (top-1/HHI), DME family mix (A/E/K/L + wheelchair/oxygen/orthotic), rental share, single-supplier captivity, within-specialty pctiles"}
+  "scripts/compute_dmepos_rich_features.py": {status: canonical, role: "dmepos_rich feature builder"}
+  "scripts/compute_medicaid_features.py": {status: canonical, role: "medicaid_features builder (P1 all-payer upgrade) — per-(NPI, year) T-MSIS features from provider_spending_full.parquet via DuckDB SQL: total pay/claim lines/n_hcpcs, top1_code_share + code_hhi (single-code concentration, the Red Sun signal) with within-service-class percentiles, yoy_growth, service_class (personal_care/home_health/hospice/transport/lab/other), data_reliability gate (fraudlib/medicaid_quality.py), best-effort cross-program block (medicare_also/medicare_partb_pay/cross_program_ratio, null when the Part-B panel isn't present)"}
+  "scripts/compute_triage_norms.py": {status: canonical, role: "per-specialty triage norms computed from feature panels (opioid-share median/p95 + dual-share median) -> data/cache/triage_norms/norms_{year}.json; feeds the triage prompt's {computed_norms} slot"}
+  "scripts/compute_hcpcs_rich_features.py": {status: canonical, role: "hcpcs_rich feature builder"}
+  "scripts/courtlistener_search.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/docket_lookup.py": {status: canonical, role: "investigator runtime lookup tool (CourtListener + PacerMonitor public docket)"}
+  "scripts/doctrine_lookup.py": {status: canonical, role: "counsel_build/defense pleading-time doctrine lookup — BM25 free-text retrieval over docs/legal_corpus/ narrative doctrine cards (complements precedent_lookup.py's structured R2 defense-mode x circuit corpus)"}
+  "scripts/doj_pr_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/dmepos_detailed_lookup.py": {status: canonical, role: "investigator runtime lookup tool — per-NPI DMEPOS referral line items (which HCPCS a referrer ordered) + brace-mill/wheelchair/rental-abuse signals"}
+  "scripts/dump_dme_breakdown.py": {status: canonical, role: "investigator runtime lookup tool — per-(referring-NPI, HCPCS) DMEPOS-referral breakdown (family mix, code concentration, rental share, supplier captivity, DME-fraud code watchlist)"}
+  "scripts/dump_hcpcs_breakdown.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/doctor.py": {status: canonical, role: "make doctor — one-command machine diagnosis (python/claude/node/R2/ports/panels/queue/hooks/disk); HARD failures exit 1, warnings are degraded-but-working"}
+  "scripts/audit_gold_set.py": {status: canonical, role: "gold-set audit: surface/identity/year consistency checks over DOJ-derived labels"}
+  "scripts/casemix_cohort.py": {status: canonical, role: "case-mix-matched peer cohort: forecloses the 'sicker patients' explanation from public PUF demographics"}
+  "scripts/compute_shap_drivers.py": {status: canonical, role: "per-provider SHAP driver export for ranker explanations"}
+  "scripts/fetch_public_data.py": {status: canonical, role: "one-command download of public CMS data into data/processed (wraps pipeline/scrapers)"}
+  "scripts/hunt_impossible.py": {status: canonical, role: "MUE/time-impossibility screen; a billing-FORMAT and frequency detector, not a falsity screen (check how a pattern could be paid)"}
+  "scripts/mine_entity_labels.py": {status: deprecated, role: "regex entity-label miner; superseded by the LLM-read labelgen pipeline (unreliable, do not use)"}
+  "scripts/publish_hf_dataset.py": {status: canonical, role: "mirror the private bucket to a public Hugging Face dataset (batched, resumable; excludes unscrubbed labels and CPT text; strips home paths) so clones read it via NP_DATA_URL"}
+  "scripts/show_case.py": {status: canonical, role: "one-screen summary of a case folder: verdict, filing-test predicates, strength, damages, live innocent explanations, open checkpoint, report files"}
+  "scripts/duck.py": {status: canonical, role: "read-only DuckDB query runner — agents call this instead of embedding python -c duckdb in bash; table aliases partb/partb_svc/partd/dmepos + --years multi-year damages-floor math"}
+  "scripts/experiments/build_hcpcs_centrality_fast.py": {status: canonical, role: "hcpcs centrality builder"}
+  "scripts/experiments/discover_multisource_rules_v2.py": {status: library, role: "rule/peer-pct LIBRARY (v4 import)"}
+  "scripts/experiments/export_gnn_embeddings.py": {status: canonical, role: "GNN embedding export"}
+  "scripts/experiments/export_gnn_pca.py": {status: canonical, role: "GNN PCA export"}
+  "scripts/experiments/measure_top_k_v2.py": {status: library, role: "LIBRARY: _rule_mask (train_filtered_ranker import)"}
+  "scripts/experiments/pca_analyze_gnn.py": {status: canonical, role: "GNN PCA analysis"}
+  "scripts/experiments/pretrain_gnn.py": {status: canonical, role: "GNN encoder pretrain"}
+  "scripts/experiments/run_ablation.py": {status: library, role: "v1 ablation harness; LIBRARY for v4 worker"}
+  "scripts/experiments/run_tier1_combined.py": {status: library, role: "specialty/cohort LIBRARY (v4 import)"}
+  "scripts/experiments/train_filtered_ranker.py": {status: library, role: "phase-2 ranker LIBRARY (imported)"}
+  "scripts/experiments/train_per_archetype_rankers.py": {status: library, role: "per-archetype ranker LIBRARY (imported)"}
+  "scripts/experiments/walk_forward_v4.py": {status: canonical, role: "THE ML training/scoring worker (stage 2)"}
+  "scripts/fsmb_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/hcpcs_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/innocent_explanation_prescreen.py": {status: canonical, role: "per-se selection gate BEFORE loop spend — deterministic no-innocent-explanation checks (LEIE/CA-S&I exclusion-or-revocation, approximate impossible-day) on a ring_enrichment.py seed+ring; track=file_track only on a fired per-se signal, else ambiguous_needs_judgment (likely referral-track, left to human/loop)"}
+  "scripts/ingest/build_cpt_descriptors_from_rvu.py": {status: canonical, role: "canonical per-year CPT descriptors from CMS MPFS RVU files (authoritative; supersedes PUF HCPCS_Desc)"}
+  "scripts/ingest/build_hcpcs_reference.py": {status: canonical, role: "HCPCS reference builder (hcpcs_lookup dep)"}
+  "scripts/ingest/canonicalize_hcpcs_reference.py": {status: canonical, role: "bake canonical MPFS-RVU descriptors into the HCPCS reference (hcpcs_lookup dep)"}
+  "scripts/ingest/doj_api_ingest.py": {status: deprecated, role: "LEGACY regex DOJ bulk ingest — SUPERSEDED by the corpus_curator pipeline (pipeline/scrapers/doj_press_releases.py discovery -> gold_set_builder.py curator+gate+merge). Retained: built the historical corpus + doj_press_releases.py reuses _is_healthcare_fraud."}
+  "scripts/ingest/normalize_ca_chhs.py": {status: canonical, role: "CA exclusion normalizer (ca_exclusion_lookup dep)"}
+  "scripts/ingest/normalize_open_payments_npi.py": {status: canonical, role: "one-shot repair — adds a canonical zero-padded npi column to local Open Payments parquets, normalizing the cross-year Covered_Recipient_NPI dtype drift (VARCHAR vs DOUBLE) that silently zeroed exact-string joins; idempotent, atomic per-file rewrite"}
+  "scripts/ingest/parse_clia_registry.py": {status: canonical, role: "CLIA registry parser (clia_lookup dep)"}
+  "scripts/ingest/parse_clia_pos.py": {status: canonical, role: "CLIA certified-population (POS Clinical Labs) parser — clia_lookup --certified dep"}
+  "scripts/ingest/parse_lcd_ncd.py": {status: canonical, role: "LCD/NCD parser (lcd_lookup dep)"}
+  "scripts/lcd_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/leie_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/inject_context.py": {status: canonical, role: "HITL inbox — appends operator-supplied notes to a case's human_context.jsonl, folded into investigator evidence on the next iteration via orchestrator._merge_human_context"}
+  "scripts/fix_dossier_markdown.py": {status: canonical, role: "dossier markdown autofixer (case_writer post-processor)"}
+  "scripts/calibration_battery.py": {status: canonical, role: "self-learning loop 3 — TP/control battery over calibration runs; metrics (tp_file_rate / control_file_rate / evf_separation / control_dispositive_defeat_rate) + committed-baseline ratchet (--ratchet exits 1 on regression); merge convention in docs/SELF_LEARNING.md"}
+  "scripts/hindsight_replay.py": {status: canonical, role: "self-learning loop 1 — DOJ-as-delayed-oracle funnel replay of gold_set NPIs (ranker/triage/loop/parked placement), miss-routing to owning agents; run monthly after corpus_curator (--since)"}
+  "scripts/verdict_replay.py": {status: canonical, role: "fast verdict-replay oracle — recompute FinalVerdict from a saved summary.json (no agents) by re-applying the Phase-C ladder to persisted signals; millisecond regression gate for verdict-logic refactors (legible rationale trail)"}
+  "scripts/replay_battery.py": {status: canonical, role: "cheap-replay loop — harvest completed battery runs' summaries into frozen fixtures (validation/replay/fixtures), then replay every fixture through the CURRENT compute_verdict/build_scorecard (--report/--check) so scoring/verdict-logic changes are regression-checked in ms with no live runs (hermetic, CI-able; generalizes verdict_replay)"}
+  "scripts/theory_match.py": {status: canonical, role: "theory-match recall — did the loop plead the ACTUAL DOJ fraud MECHANISM (not just file)? scores runs vs validation/battery/doj_theory.json (the answer key; post-hoc, leak-safe) → theory_match_rate MATCH/MISS/INCONCLUSIVE"}
+  "scripts/fit_scoring_weights.py": {status: canonical, role: "self-learning loop 4 — MAP logistic fit of scoring.WEIGHTS against realized outcomes (hand weights = prior mean, λ-shrinkage; labels from gold_set / battery controls / provisional hard negatives); refuses to recommend below --min-n"}
+  "scripts/mine_hard_negatives.py": {status: canonical, role: "self-learning loop 5 — merits-killed (≥1 dispositive), non-gold_set providers → results/hard_negatives.jsonl (provisional half-vote negatives; oracle outranks)"}
+  "scripts/lint_dossier_markdown.py": {status: canonical, role: "dossier markdown linter"}
+  "scripts/medicaid_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/nppes_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/np_launch.py": {status: canonical, role: "maintainer launcher: `make investigate NPI=...` (queue discovery, then the full loop on one NPI)"}
+  "scripts/ops/np_queue.py": {status: canonical, role: "sequential investigation queue + babysitter — `make queue-add/queue-status/queue-daemon`; runs production investigations one at a time (concurrency 1 by design; parallel drains the 5h token window), auto-resumes a stalled run (case+log quiet >12min, tmux alive) up to a cap then parks, macOS-notifies (deduped) on human-checkpoint/completion; calibration cases notify-only"}
+  "scripts/answer_checkpoint.py": {status: canonical, role: "Guardrail-4 human-in-the-loop — `list` open NEEDS_HUMAN_CHECKPOINT cases + `answer` one (records the reply as a human_attested confirmed_fact, marks the ReviewRequest resolved, rewinds the stale decision + purges its on-disk step cache, resets status) so a --resume-case re-decides without the unverifiable premise; default prints the resume cmd, --resume launches it (FRAUD_INV_SAFE_PERMS=1)"}
+  "scripts/opioid_metrics.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/orchestrate_pipeline.py": {status: canonical, role: "4-stage pipeline entry point"}
+  "scripts/partd_drug_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/pecos_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/precedent_cache.py": {status: canonical, role: "verified-citation get/put cache — data/cache/precedent_verifications.jsonl (+ quote blobs in data/cache/policy_texts/); check before re-verifying a cite via courtlistener_search.py, put after a successful verify, so the same controlling case isn't re-verified across every case/iteration"}
+  "scripts/precedent_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/prompt_budget_report.py": {status: canonical, role: "prompt-mass audit vs turn budgets (F2 regression guard) — WARN >10K est tokens, HARD >16K fails tests/test_prompt_budget.py"}
+  "scripts/preflight_walk_forward.py": {status: canonical, role: "pre-sweep cache validator"}
+  "scripts/physician_compare_lookup.py": {status: canonical, role: "investigator runtime lookup tool — CMS Doctors & Clinicians (DAC) group/billing-entity (Org_PAC_ID) structure: shared-entity rings, co-located structuring, group-explains-volume"}
+  "scripts/provider_trajectory.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/queue_ev_rank.py": {status: canonical, role: "M5 — expected-value queue gate: re-orders a TriageOutput queue by EV = Tot_Mdcr_Pymt_Amt × confidence × verdict weight (HIGH 1.0 / MODERATE 0.4 / LOW 0.05 / DISMISS 0.0); emits a valid TriageOutput with original ML ranks preserved"}
+  "scripts/r2_janitor.py": {status: canonical, role: "local-state TTL janitor — deletes run artifacts older than --ttl-days ONLY after rclone check --one-way verifies them on R2; parked cases excluded; dry-run default (make janitor / janitor-apply)"}
+  "scripts/rederive_agent_filter.py": {status: canonical, role: "derives the floor_0.50 agent filter"}
+  "scripts/regen_case_with_dogwood_fix.sh": {status: canonical, role: "case regen runbook (CASE-6A2A0E69 Dogwood fix)"}
+  "scripts/revoked_provider_lookup.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/ring_enrichment.py": {status: canonical, role: "individual -> company/ring enrichment: fuses Org_PAC_ID + PECOS reassignment, scores ring-member ranker-anomaly concentration, and runs a novelty/collectibility screen; wired into investigator_discover as the entity/network launch point"}
+  "scripts/target_sweep.py": {status: canonical, role: "anchor-gated target sweep — panel ranks (--ranks A-B, skin-sub excluded) -> batched R2 top-codes (one IN-list query per <=500-NPI batch) -> anchor_check -> ring_enrichment (per-candidate) -> novelty screen -> JSONL + state/ring_cache/; --skip-npis-file replaces a hand-edited DONE set"}
+  "scripts/run_maximal_sane_sweep.sh": {status: canonical, role: "serial walk-forward sweep driver"}
+  "scripts/run_support_agent.py": {status: canonical, role: "supporting-agents CLI launcher"}
+  "scripts/sandbox_browser.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/sandbox_nppes.py": {status: canonical, role: "investigator runtime lookup tool"}
+  "scripts/scrape/__init__.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/akamai_solver.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/cli.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/fetcher.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/in_scope_filter.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/raw_archive.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/scrape_missing_doj_urls.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/sources/__init__.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/sources/doj_press.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/sources/oig_enforcement.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/scrape/sources/usao_discovery.py": {status: scrape, role: "DOJ scrape tooling (kept; corpus_curator is the forward refresh path)"}
+  "scripts/setup_r2.sh": {status: canonical, role: "R2 sync setup"}
+  "scripts/source_primer.py": {status: canonical, role: "investigator runtime lookup tool — prints a data/docs/<source>.md domain primer (schema + which columns signal which scheme); jail-safe CLI read"}
+  "scripts/swap_gnn_pca_parity.py": {status: canonical, role: "GNN-PCA parity swap (pipeline_contract)"}
+  "scripts/sync_artifacts_r2.sh": {status: canonical, role: "R2 run-artifact sync (calibration/cases/investigations/pipeline_runs -> r2:needlepoint-data/artifacts)"}
+  "scripts/verify_triage_contract.py": {status: canonical, role: "pre-commit triage guard"}
+  "scripts/verify_vocabulary.py": {status: canonical, role: "pre-commit vocabulary guard (#7) — blocks newly-added deprecated terms"}
+
+# ---------------------------------------------------------------------------
+# vocabulary — canonical vs DEPRECATED terms/artifacts (the non-script analogue
+# of `entries` above; the authoritative "use this, not that" map). Pre-commit
+# guard #7 (scripts/verify_vocabulary.py) blocks NEWLY-ADDED `deprecated` phrases
+# in current-surface files (docs, console .jsx, README, agent prompts, web/, .py
+# comments/strings). It scans only ADDED diff lines, so existing legacy mentions
+# never block — it just stops NEW drift. History/why-deprecated docs are exempt.
+# Bypass a legitimate historical mention with:  ALLOW_VOCAB_DRIFT=1 git commit ...
+# ---------------------------------------------------------------------------
+vocabulary:
+  "labels": {use: "gold_set.jsonl — DOJ-only labels, loaded by fraudlib/labels/v4_gold.py", deprecated: ["v9 label", "v9 corpus", "v9 ground truth", "v9 row", "v9 positive", "v9-stamped", "cases_v1"]}
+  "panel_filter": {use: "floor_0.50 — data-fit panel filter in walk_forward_v4.py::_agent_filter_drop_mask", deprecated: ["59-rule v3 agent filter", "59-rule agent filter", "59 rule agent filter", "rules_v3 agent filter", "rules_v3 filter"]}
+  "rule_features": {use: "rules_v3.json = FEATURE columns only (rule__*); NOT the panel filter, NOT the rule-derivation output", deprecated: []}
+  "rule_derivation": {use: "experimental tool — proposes NEW candidate rules from new features; NOT the canonical filter", deprecated: []}
+  "doj_ingest": {use: "Corpus Curator (pipeline/scrapers/doj_press_releases.py -> gold_set_builder.py)", deprecated: ["doj_api_ingest is canonical", "canonical doj_api_ingest"]}
+  "label_policy": {use: "DOJ-only labels", deprecated: ["leie label", "leie as truth", "leie as a label"]}
