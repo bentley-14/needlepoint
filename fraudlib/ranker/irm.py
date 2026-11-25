@@ -24,6 +24,7 @@ IRMModel.score(df) -> pd.Series  (probabilities, polarity-aligned with classifie
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from typing import Sequence
 
@@ -32,6 +33,12 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+if sys.platform == "darwin":
+    # macOS pip builds of PyTorch and XGBoost each bundle libomp; with both multithreaded in
+    # one process (walk-forward trains XGBoost, then this net) they deadlock. One torch thread
+    # avoids it at little cost for these small networks.
+    torch.set_num_threads(1)
 
 
 # ---------------------------------------------------------------------------

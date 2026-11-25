@@ -30,6 +30,7 @@ gives +5% F1 over single-head on heterogeneous Medicare fraud labels.
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from typing import Sequence
 
@@ -38,6 +39,12 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+
+if sys.platform == "darwin":
+    # macOS pip builds of PyTorch and XGBoost each bundle libomp; with both multithreaded in
+    # one process (walk-forward trains XGBoost, then this net) they deadlock. One torch thread
+    # avoids it at little cost for these small networks.
+    torch.set_num_threads(1)
 
 
 @dataclass

@@ -38,10 +38,17 @@ Configurable hyperparameters: ``num_layers``, ``embed_dim``.
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
+
+if sys.platform == "darwin":
+    # macOS pip builds of PyTorch and XGBoost each bundle libomp; with both multithreaded in
+    # one process (walk-forward trains XGBoost, then this net) they deadlock. One torch thread
+    # avoids it at little cost for these small networks.
+    torch.set_num_threads(1)
 
 
 @dataclass
