@@ -34,9 +34,7 @@ change. Stale doc → noisy diff → drift hides in the noise (exactly how we lo
 3. Run; confirm `verify_pipeline_contract` warns about **only** that knob.
 4. Commit code + YAML + doc together.
 
-The drift guard (§1) enforces the *runtime* half; the pre-commit hook (§1) enforces the
-*commit-time* half — it hard-blocks a commit that changes a pipeline file without staging
-this doc + the contract.
+The drift guard (§1) checks this at run time.
 
 ---
 
@@ -52,12 +50,6 @@ this doc + the contract.
 deviation; HARD-ERROR (`ContractViolation`) only on `invariants` (label source, GNN
 form/dims, no-leakage). Degrades to a warning if pyyaml is missing — the checker must
 never break a run.
-
-**Commit-time enforcement (ACTIVE):** `scripts/git-hooks/pre-commit` hard-blocks any
-commit that stages a pipeline file without also staging `fraudlib/pipeline_contract.yaml`
-+ this doc. Install (one-time, no git-config change):
-`ln -s ../../scripts/git-hooks/pre-commit .git/hooks/pre-commit`. Intentional exception:
-`ALLOW_PIPELINE_DRIFT=1 git commit ...`.
 
 **Wiring status:** `verify_pipeline_contract()` is wired into `walk_forward_v4.py`
 `main()` (2026-05-29) — it runs at startup, logs drift warnings, and writes a per-run

@@ -1,6 +1,6 @@
 # DOJ Press Releases — healthcare-fraud discovery source
 
-**Scraper:** [`pipeline/scrapers/doj_press_releases.py`](../../pipeline/scrapers/doj_press_releases.py)
+**Scraper:** not included in this repository; the data ships in the public dataset.
 **Schema reference (columns + dtypes):** [docs/DATA_SCHEMAS.md](../../docs/DATA_SCHEMAS.md)
 **Files:** `data/source/doj_api/curator_input.jsonl` (the curator's input
 list) + `curator_input.manifest.json` (framework `RunResult` sidecar) ·
@@ -121,7 +121,7 @@ queries loosely and the **body gate** then confirms "Medicare" in the body.
 
 A title term like `kickback` / `controlled substance` over-pulls
 *non-healthcare* cases (public-corruption bribery, street-drug distribution).
-The body gate ([`passes_body_gate`](../../pipeline/scrapers/doj_press_releases.py))
+The body gate (`passes_body_gate`)
 requires **≥1 anchor** (`medicare`/`medicaid`/`tricare`/`false claims act`/…)
 **AND ≥2 billing keywords**. Validated: retains **96.4%** of true gold-labeled
 releases while dropping **~21%** of marginal over-pull. Live example: it keeps
@@ -156,7 +156,7 @@ defendant's address as stated in the body.
 
 - The warm cache currently spans **2009-01-08 → 2026-04-28** (5,937
   healthcare-fraud releases), built one-time by
-  [`scripts/ingest/doj_api_ingest.py`](../../scripts/ingest/doj_api_ingest.py).
+  `scripts/ingest/doj_api_ingest.py`.
   This scraper extends it forward on each weekly run.
 - Cache distribution is roughly flat: ~450 releases/yr 2013–2019, ~355/yr
   2020–2023. The post-2019 dip is real (prosecution volume), not a search
@@ -228,7 +228,7 @@ recast for this source.
 
 ## 8. File contract
 
-After running [`DojPressReleasesScraper`](../../pipeline/scrapers/doj_press_releases.py):
+After running `DojPressReleasesScraper`:
 
 ```
 data/source/doj_api/curator_input.jsonl          # curator's input list: 1 row per newly-discovered release

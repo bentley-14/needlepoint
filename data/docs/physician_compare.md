@@ -1,6 +1,6 @@
 # Physician Compare — DAC National Downloadable File (group affiliations)
 
-**Scraper:** [`pipeline/scrapers/physician_compare.py`](../../pipeline/scrapers/physician_compare.py)
+**Scraper:** not included in this repository; the data ships in the public dataset.
 **Schema reference (columns + dtypes):** [docs/DATA_SCHEMAS.md §2.7](../../docs/DATA_SCHEMAS.md)
 **Files:** `data/registries/physician_compare_YYYY-MM.parquet` (dated snapshots) + `physician_compare.parquet` (symlink → most recent)
 
@@ -235,7 +235,7 @@ same stance `care_compare._csv_to_parquet` takes.
 
 ## 8. File contract
 
-After running [`PhysicianCompareScraper`](../../pipeline/scrapers/physician_compare.py):
+After running `PhysicianCompareScraper`:
 
 ```
 data/registries/physician_compare_YYYY-MM.parquet        # curated cols, multi-row per NPI

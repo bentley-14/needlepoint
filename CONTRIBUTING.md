@@ -23,11 +23,10 @@ Tests that need the non-distributed case corpus or a storage bucket skip themsel
 | Add an investigator tool | a script in `scripts/`, registered in `scripts/REGISTRY.yaml`, mentioned in `prompts/investigator.md` | `tests/test_registry_integrity.py` |
 | Add an agent tool for non-Claude models | `fraud-investigator-v2/src/fraud_investigator/llm_tools.py` (`tool_specs` + a `_t_<name>` method) | `test_api_backend.py` |
 | Add a coverage rule (falsity anchor) | `data/reference/coverage_anchors.yaml` (cite the rule text, not guidance) | `tests/test_anchors.py` |
-| Add a way to foreclose an innocent explanation | `data/reference/foreclosure_proxies.yaml` | `tests/` foreclosure tests |
 | Change verdict logic | `verdict.py` (filing predicates), `scoring.py` (strength and EVF bands), `discounts.py` | `fraud-investigator-v2/tests/test_verdict*.py`, the battery |
 | Change loop depth | `needlepoint.py --depth`, or `DEPTHS` in `needlepoint.py` (build iterations, at least 2, and defense rounds); `TURN_BUDGET_BY_STEP` for per-step turns | a quick run |
 | Add a data source | a `BaseScraper` subclass in `pipeline/scrapers/` and an entry in `scripts/fetch_public_data.py`; read it through `fraudlib.r2.DataPath` so it works locally, from a bucket, or from the public dataset | `tests/pipeline/`, `tests/test_r2_public_mirror.py` |
-| Host the data for others | `scripts/publish_hf_dataset.py` mirrors your bucket to a public Hugging Face dataset; readers set `NP_DATA_URL` | `--dry-run` |
+| Use your own copy of the data | point `NP_DATA_URL` at any mirror (an `hf://` dataset, an `https` URL, or `file://` path) with the same layout | `tests/test_r2_public_mirror.py` |
 | Change the ranker | `fraudlib/ranker/`, `fraudlib/pipeline_contract.yaml` | walk-forward recall (`docs/EVAL.md`) |
 
 ## Rules

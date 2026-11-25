@@ -1,4 +1,4 @@
-"""Shared library for the NeedlePoint pipeline (see ``docs/PIPELINE_SCHEMATIC.md``).
+"""Shared library for the NeedlePoint pipeline (see "How it works" in ``CONTRIBUTING.md``).
 
     labels/   label loaders (gold_set, case-based positives)
     sources/  feature loaders (CMS panels)

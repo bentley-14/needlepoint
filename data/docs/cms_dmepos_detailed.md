@@ -1,6 +1,6 @@
 # CMS DMEPOS — by Referring Provider & Service (per-HCPCS line items)
 
-**Scraper:** [`pipeline/scrapers/cms_dmepos_detailed.py`](../../pipeline/scrapers/cms_dmepos_detailed.py)
+**Scraper:** not included in this repository; the data ships in the public dataset.
 **Schema reference (columns + dtypes):** [docs/DATA_SCHEMAS.md §2.6](../../docs/DATA_SCHEMAS.md)
 **Files:** `data/panels/cms_dmepos_detailed_YYYY.parquet` + `cms_dmepos_detailed_YYYY.manifest.json`
 
@@ -125,7 +125,7 @@ reason (avoid a per-row format call at multi-million-row scale).
   years (2014–2023) were published under the **RY25** release: data year
   2023 at V10 (June 2025), 2014–2022 republished at V20 (November 2025).
   The URL catalog lives in
-  [`pipeline/scrapers/cms_dmepos_detailed.py:URLS`](../../pipeline/scrapers/cms_dmepos_detailed.py);
+  `pipeline/scrapers/cms_dmepos_detailed.py:URLS`;
   expect URLs to rotate per RY release (re-resolve from the data.json
   catalog, dataset id `86b4807a-d63a-44be-bfdf-ffd398d5e623`).
 - **Suppression rules — applied upstream by CMS, not by our code.** CMS
@@ -285,7 +285,7 @@ never the raw `Rfrg_NPI`** (see §5).
 
 ## 8. File contract
 
-After running [`DMEPOSDetailedScraper`](../../pipeline/scrapers/cms_dmepos_detailed.py):
+After running `DMEPOSDetailedScraper`:
 
 ```
 data/panels/cms_dmepos_detailed_YYYY.parquet        # 40 cols, multi-row per NPI
@@ -297,7 +297,7 @@ Manifest fields are documented on
 manifest at load time, compare `schema_version`, and warn on mismatch.
 
 **Note on the aggregated-DMEPOS glob:**
-[`pipeline/scripts/backfill_cms_dmepos_manifest.py`](../../pipeline/scripts/backfill_cms_dmepos_manifest.py)
+`pipeline/scripts/backfill_cms_dmepos_manifest.py`
 matches `cms_dmepos_[0-9][0-9][0-9][0-9].parquet` (four-digit year anchor)
 specifically so these `cms_dmepos_detailed_*` files are **not** swept into
 the aggregated-panel manifest stamper — the detailed scraper writes its own

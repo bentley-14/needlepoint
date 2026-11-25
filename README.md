@@ -78,7 +78,7 @@ and human checkpoints. Case folders are git-ignored: they name real people.
 
 | Layer | What it does | Where |
 |---|---|---|
-| Data | public files to per-provider parquet, read in place from the public dataset or a bucket | `pipeline/`, `fraudlib/r2.py`, `scripts/publish_hf_dataset.py` |
+| Data | public files to per-provider parquet, read in place from the public dataset or a bucket | `pipeline/`, `fraudlib/r2.py` |
 | Ranker | walk-forward ML that surfaces unusual providers | `fraudlib/ranker/` |
 | Investigator and counsel | evidence gathering, case theory, damages | `fraud-investigator-v2/src/fraud_investigator/` |
 | Adversarial defense | motion-to-dismiss rounds; each count survives, is discounted, or is abandoned | `agents/defense.py` |
