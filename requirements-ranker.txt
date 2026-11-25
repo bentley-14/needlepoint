@@ -1,0 +1,5 @@
+# Extra dependencies for training and scoring the ranker (make install-ranker).
+# Not needed to run cases: case runs read the published ranker scores.
+-r requirements.txt
+torch>=2.1              # neural arm of the ranker (fraudlib/ranker/multitask.py), GNN embeddings
+imbalanced-learn>=0.12  # resampling helpers (fraudlib/ranker/sampling.py)

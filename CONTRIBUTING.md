@@ -27,7 +27,7 @@ Tests that need the non-distributed case corpus or a storage bucket skip themsel
 | Change loop depth | `needlepoint.py --depth`, or `DEPTHS` in `needlepoint.py` (build iterations, at least 2, and defense rounds); `TURN_BUDGET_BY_STEP` for per-step turns | a quick run |
 | Add a data source | a `BaseScraper` subclass in `pipeline/scrapers/` and an entry in `scripts/fetch_public_data.py`; read it through `fraudlib.r2.DataPath` so it works locally, from a bucket, or from the public dataset | `tests/pipeline/`, `tests/test_r2_public_mirror.py` |
 | Use your own copy of the data | point `NP_DATA_URL` at any mirror (an `hf://` dataset, an `https` URL, or `file://` path) with the same layout | `tests/test_r2_public_mirror.py` |
-| Change the ranker | `fraudlib/ranker/`, `fraudlib/pipeline_contract.yaml` | walk-forward recall (`docs/EVAL.md`) |
+| Change the ranker | `fraudlib/ranker/`, `fraudlib/pipeline_contract.yaml` (install PyTorch first: `make install-ranker`) | walk-forward recall (`docs/EVAL.md`) |
 
 ## Rules
 

@@ -65,6 +65,10 @@ LOG = logging.getLogger("fraud_investigator.orchestrate_pipeline")
 
 STATE_ROOT = REPO_ROOT / "state" / "runs"
 
+# Wall-clock cap on the ranker subprocess. A full walk-forward is long but finite; a hung
+# ranker (e.g. an OpenMP deadlock) must not block the investigation stage forever.
+RANKER_TIMEOUT_SEC = 12 * 3600
+
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -106,7 +110,14 @@ def run_stage2_ml(
     })
 
     with log_path.open("w") as log_fh:
-        proc = subprocess.run(cmd, stdout=log_fh, stderr=subprocess.STDOUT, cwd=str(REPO_ROOT))
+        try:
+            proc = subprocess.run(cmd, stdout=log_fh, stderr=subprocess.STDOUT, cwd=str(REPO_ROOT),
+                                  timeout=RANKER_TIMEOUT_SEC)
+        except subprocess.TimeoutExpired:
+            event_sink.emit(STAGE_ML_TRAINING, EVENT_STAGE_FAILED, {
+                "timeout_sec": RANKER_TIMEOUT_SEC, "log_path": str(log_path),
+            })
+            raise RuntimeError(f"walk_forward_v4.py timed out after {RANKER_TIMEOUT_SEC}s; see {log_path}")
 
     if proc.returncode != 0:
         event_sink.emit(STAGE_ML_TRAINING, EVENT_STAGE_FAILED, {
@@ -218,21 +229,18 @@ def _build_subject_from_scored_row(scored_panel_path: Path, npi: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def run_full(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> int:
-    """Stages 1 -> 2 -> 3 -> 4."""
-    # Stage 1
-    stage1_result = rule_derivation_agent.run(run_dir=run_dir, event_sink=event_sink)
+def _run_ranking(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> tuple[Path, Path]:
+    """Stages 1 -> 2 -> 3: rule derivation, ranker, triage. Returns (scored panel, triage queue)."""
+    rule_derivation_agent.run(run_dir=run_dir, event_sink=event_sink)
     filter_path = run_dir / "stage1_rederive.json"
     manifest["stage1"] = {"filter_path": str(filter_path)}
 
-    # Stage 2
     scored_panel = run_stage2_ml(
         run_dir=run_dir, event_sink=event_sink,
         score_year=args.year, filter_path=filter_path,
     )
     manifest["stage2"] = {"scored_panel": str(scored_panel)}
 
-    # Stage 3
     triage_path = triage_agent.run(
         run_dir=run_dir, event_sink=event_sink,
         scored_panel_path=scored_panel,
@@ -240,6 +248,33 @@ def run_full(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> int:
         k_range=args.k_range,
     )
     manifest["stage3"] = {"triage_path": str(triage_path)}
+    return scored_panel, triage_path
+
+
+def run_full(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> int:
+    """Stages 1 -> 2 -> 3 -> 4.
+
+    Ranking is isolated from the investigation: if any ranking stage fails or times out and
+    --new-npi names the subject, the investigation still runs (subject built as for an ad-hoc
+    NPI). Without --new-npi there is nothing to investigate, so the failure propagates.
+    """
+    try:
+        scored_panel, triage_path = _run_ranking(args, run_dir, event_sink, manifest)
+    except Exception as e:
+        manifest["ranking_error"] = f"{type(e).__name__}: {e}"
+        if not args.new_npi:
+            raise
+        LOG.warning(f"Ranking failed ({manifest['ranking_error']}); "
+                    f"investigating NPI {args.new_npi} without it")
+        subject, _ = _build_subject_for_npi(args.new_npi)
+        manifest["stage4"] = {"subject": subject, "chosen_npi": args.new_npi}
+        return run_stage4_investigator(
+            subject=subject, event_sink=event_sink,
+            max_iterations=args.max_iterations,
+            max_pre_rebuttal_iters=args.max_pre_rebuttal_iters,
+            max_adversarial=args.max_adversarial,
+            resume_case_id=args.resume_case,
+        )
 
     # Stage 4 — needs a chosen NPI
     if args.new_npi:
@@ -268,23 +303,7 @@ def run_full(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> int:
 
 def run_rank_only(args, run_dir: Path, event_sink: EventSink, manifest: dict) -> int:
     """Stages 1 -> 2 -> 3. No investigator."""
-    stage1_result = rule_derivation_agent.run(run_dir=run_dir, event_sink=event_sink)
-    filter_path = run_dir / "stage1_rederive.json"
-    manifest["stage1"] = {"filter_path": str(filter_path)}
-
-    scored_panel = run_stage2_ml(
-        run_dir=run_dir, event_sink=event_sink,
-        score_year=args.year, filter_path=filter_path,
-    )
-    manifest["stage2"] = {"scored_panel": str(scored_panel)}
-
-    triage_path = triage_agent.run(
-        run_dir=run_dir, event_sink=event_sink,
-        scored_panel_path=scored_panel,
-        score_year=args.year,
-        k_range=args.k_range,
-    )
-    manifest["stage3"] = {"triage_path": str(triage_path)}
+    _, triage_path = _run_ranking(args, run_dir, event_sink, manifest)
     LOG.info(f"Rank-only mode complete. Triage queue at {triage_path}")
     return 0
 

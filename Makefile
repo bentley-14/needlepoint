@@ -8,6 +8,7 @@
 #   make doctor                 # check your setup
 #   make fetch YEAR=2024        # optional: download one year to work offline (data is read in place otherwise)
 #   make test                   # run the test suites
+#   make install-ranker         # add PyTorch etc. to train or rescore the ranker
 #
 # The ranking pipeline (XGBoost + neural ranker, triage, investigation) runs through
 # scripts/orchestrate_pipeline.py; see docs/WALK_FORWARD_PIPELINE.md.
@@ -17,7 +18,7 @@ PYTHON   ?= python3
 PIP      := .venv/bin/pip
 PYRUN    := $(shell test -x .venv/bin/python3 && echo .venv/bin/python3 || echo python3)
 
-.PHONY: setup venv install case knobs show doctor fetch investigate test clean
+.PHONY: setup venv install install-ranker case knobs show doctor fetch investigate test clean
 
 venv:
 	@$(PYTHON) -c 'import sys; sys.exit(sys.version_info < (3, 11))' || { echo "NeedlePoint needs Python 3.11+ ($(PYTHON) is too old). Install a newer Python, then: make setup PYTHON=python3.12"; exit 1; }
@@ -27,6 +28,9 @@ install: venv
 	$(PIP) install -U pip
 	$(PIP) install -r requirements.txt
 	$(PIP) install -e "fraud-investigator-v2[test]"
+
+install-ranker: install
+	$(PIP) install -r requirements-ranker.txt
 
 setup: install
 	@echo "Next: put a model key in .env (cp .env.example .env), then: source .venv/bin/activate && python3 needlepoint.py"
